@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumina - Read & Ask</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* PDF Viewer */
+    .pdf-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-right: 1px solid #ddd;
+    }
+
+    .pdf-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafafa;
+      gap: 12px;
+    }
+
+    .pdf-header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .upload-btn {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      color: #666;
+      transition: all 0.2s;
+    }
+
+    .upload-btn:hover {
+      background: #f0f0f0;
+      border-color: #999;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    .pdf-viewer {
+      flex: 1;
+      overflow: auto;
+      background: #f5f5f5;
+    }
+
+    #pdf-container {
+      display: none;
+    }
+
+    .page {
+      margin: 16px auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: relative;
+      background: white;
+    }
+
+    .page canvas {
+      display: block;
+    }
+
+    .textLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      opacity: 0;
+      line-height: 1;
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      user-select: text;
+    }
+
+    .textLayer span {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+    }
+
+    .textLayer span:hover {
+      background: rgba(72, 133, 237, 0.2);
+    }
+
+    .pdf-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafafa;
+    }
+
+    .page-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #333;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #f0f0f0;
+      border-color: #999;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .page-info {
+      font-size: 12px;
+      color: #666;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    /* AI Panel */
+    .ai-panel {
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-left: 1px solid #ddd;
+    }
+
+    .ai-header {
+      padding: 16px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    .ai-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .api-key-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .api-key-input::placeholder {
+      color: #999;
+    }
+
+    .ai-content {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .question-input {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .question-input textarea {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+      max-height: 100px;
+    }
+
+    .ask-btn {
+      padding: 10px 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .ask-btn:hover {
+      background: #1d4ed8;
+    }
+
+    .ask-btn:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .answer-box {
+      background: #f9f9f9;
+      padding: 12px;
+      border-radius: 4px;
+      border-left: 3px solid #2563eb;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #333;
+    }
+
+    .loading {
+      color: #666;
+      font-style: italic;
+      font-size: 12px;
+    }
+
+    .error {
+      color: #d32f2f;
+      background: #ffebee;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .placeholder {
+      color: #999;
+      font-size: 12px;
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- PDF Viewer -->
+    <div class="pdf-panel">
+      <div class="pdf-header">
+        <h1 id="filename">Load a PDF to begin</h1>
+        <input type="file" id="file-input" accept=".pdf">
+        <button class="upload-btn" onclick="document.getElementById('file-input').click()">Upload PDF</button>
+      </div>
+
+      <div class="pdf-viewer" id="pdf-viewer">
+        <div id="pdf-container"></div>
+      </div>
+
+      <div class="pdf-footer">
+        <div class="page-nav">
+          <button onclick="prevPage()" id="prev-btn">← Prev</button>
+          <button onclick="nextPage()" id="next-btn">Next →</button>
+        </div>
+        <div class="page-info">
+          <span id="page-num">0</span> / <span id="total-pages">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Panel -->
+    <div class="ai-panel">
+      <div class="ai-header">
+        <h2>Ask Lumina</h2>
+        <input type="password" class="api-key-input" id="api-key" placeholder="Paste your Gemini API key" autocomplete="off">
+      </div>
+
+      <div class="ai-content">
+        <div class="question-input">
+          <textarea id="question" placeholder="Ask about what you're reading..."></textarea>
+          <button class="ask-btn" id="ask-btn" onclick="askAI()">Ask</button>
+        </div>
+
+        <div id="answer-container">
+          <div class="placeholder">Answers will appear here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let pdfDoc = null;
+    let currentPage = 1;
+    let pageTexts = {}; // Store text for each page
+
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('filename').textContent = file.name;
+      const arrayBuffer = await file.arrayBuffer();
+      loadPDF(arrayBuffer);
+    });
+
+    async function loadPDF(arrayBuffer) {
+      pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+      document.getElementById('total-pages').textContent = pdfDoc.numPages;
+      document.getElementById('pdf-container').innerHTML = '';
+      pageTexts = {};
+      currentPage = 1;
+      renderPage(1);
+    }
+
+    async function renderPage(num) {
+      if (!pdfDoc) return;
+
+      const page = await pdfDoc.getPage(num);
+      const viewport = page.getViewport({ scale: 1.5 });
+
+      // Get text content for AI
+      const textContent = await page.getTextContent();
+      pageTexts[num] = textContent.items.map(item => item.str).join(' ');
+
+      // Create page container
+      const pageDiv = document.createElement('div');
+      pageDiv.className = 'page';
+      pageDiv.style.width = viewport.width + 'px';
+      pageDiv.style.height = viewport.height + 'px';
+
+      // Canvas for rendering
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      // Render PDF page
+      await page.render({
+        canvasContext: ctx,
+        viewport: viewport
+      }).promise;
+
+      // Text layer for selection
+      const textLayerDiv = document.createElement('div');
+      textLayerDiv.className = 'textLayer';
+
+      // Build text layer with proper positioning
+      const scale = viewport.scale;
+      const pageHeight = page.view[3];
+
+      textContent.items.forEach(item => {
+        if (!item.str.trim()) return;
+
+        const span = document.createElement('span');
+        span.textContent = item.str;
+
+        // Transform coordinates
+        const transform = item.transform;
+        const x = transform[4] * scale;
+        const y = (pageHeight - transform[5]) * scale;
+        const width = item.width * scale;
+        const height = item.height * scale;
+
+        span.style.left = x + 'px';
+        span.style.top = y + 'px';
+        span.style.fontSize = (height || 12) + 'px';
+
+        textLayerDiv.appendChild(span);
+      });
+
+      pageDiv.appendChild(canvas);
+      pageDiv.appendChild(textLayerDiv);
+      document.getElementById('pdf-container').appendChild(pageDiv);
+
+      document.getElementById('page-num').textContent = num;
+      updateNavButtons();
+    }
+
+    function updateNavButtons() {
+      document.getElementById('prev-btn').disabled = currentPage <= 1;
+      document.getElementById('next-btn').disabled = currentPage >= pdfDoc.numPages;
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        document.getElementById('pdf-container').innerHTML = '';
+        renderPage(currentPage);
+      }
+    }
+
+    function nextPage() {
+      if (currentPage < pdfDoc.numPages) {
+        currentPage++;
+        document.getElementById('pdf-container').innerHTML = '';
+        renderPage(currentPage);
+      }
+    }
+
+    // AI asking
+    async function askAI() {
+      const question = document.getElementById('question').value.trim();
+      const apiKey = document.getElementById('api-key').value.trim();
+
+      if (!question) {
+        alert('Please ask a question');
+        return;
+      }
+
+      if (!apiKey) {
+        alert('Please paste your Gemini API key');
+        return;
+      }
+
+      const pageText = pageTexts[currentPage];
+      if (!pageText) {
+        alert('Please load a PDF first');
+        return;
+      }
+
+      const askBtn = document.getElementById('ask-btn');
+      const container = document.getElementById('answer-container');
+
+      askBtn.disabled = true;
+      container.innerHTML = '<div class="loading">Thinking...</div>';
+
+      try {
+        const systemPrompt = `You are a helpful AI assistant for reading papers and documents. The user is reading page ${currentPage} and has a question about what they're seeing. Answer their question based on the text provided, keeping answers concise and clear.`;
+
+        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: [{
+              parts: [{
+                text: `Text from page ${currentPage}:\n\n${pageText}\n\nQuestion: ${question}`
+              }]
+            }]
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error?.message || 'API error');
+        }
+
+        const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No answer generated';
+        container.innerHTML = `<div class="answer-box">${escapeHtml(answer)}</div>`;
+        document.getElementById('question').value = '';
+      } catch (error) {
+        container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      } finally {
+        askBtn.disabled = false;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.getElementById('question').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        askAI();
+      }
+    });
+  </script>
+</body>
+</html>
