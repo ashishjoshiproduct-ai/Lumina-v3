@@ -21,6 +21,23 @@
     .container {
       display: flex;
       height: 100vh;
+      position: relative;
+    }
+
+    .resize-handle {
+      width: 6px;
+      background: #ddd;
+      cursor: col-resize;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .resize-handle:hover {
+      background: #2563eb;
+    }
+
+    .resize-handle:active {
+      background: #1d4ed8;
     }
 
     .pdf-panel {
@@ -94,6 +111,7 @@
       flex-direction: column;
       background: white;
       border-left: 1px solid #ddd;
+      flex-shrink: 0;
     }
 
     .ai-header {
@@ -225,6 +243,8 @@
       </div>
     </div>
 
+    <div class="resize-handle" id="resize-handle"></div>
+
     <div class="ai-panel">
       <div class="ai-header">
         <h2>Ask Lumina</h2>
@@ -330,6 +350,41 @@
     document.getElementById('question').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.ctrlKey) {
         askAI();
+      }
+    });
+
+    // Resizable panel
+    const resizeHandle = document.getElementById('resize-handle');
+    const pdfPanel = document.querySelector('.pdf-panel');
+    const aiPanel = document.querySelector('.ai-panel');
+    let isResizing = false;
+
+    resizeHandle.addEventListener('mousedown', () => {
+      isResizing = true;
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      const container = document.querySelector('.container');
+      const containerRect = container.getBoundingClientRect();
+      const newPdfWidth = e.clientX - containerRect.left;
+      const minWidth = 300;
+      const maxWidth = containerRect.width - 250;
+
+      if (newPdfWidth > minWidth && newPdfWidth < maxWidth) {
+        pdfPanel.style.flex = `0 0 ${newPdfWidth}px`;
+        aiPanel.style.width = (containerRect.width - newPdfWidth - 6) + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.userSelect = 'auto';
+        document.body.style.cursor = 'default';
       }
     });
   </script>
